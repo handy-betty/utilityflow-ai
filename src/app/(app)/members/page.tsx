@@ -3,6 +3,9 @@
 import { useEffect, useState } from "react";
 import PageHeader from "@/components/PageHeader";
 import { supabase } from "@/lib/supabaseClient";
+import PermissionNotice from "@/components/PermissionNotice";
+import { canWrite } from "@/lib/roles";
+import { useUserRole } from "@/lib/useUserRole";
 
 type Member = {
   id: string;
@@ -24,7 +27,13 @@ const emptyForm = {
   address: "",
 };
 
-const serviceTypes = ["Electric", "Broadband", "Water", "Gas", "Electric + Broadband"];
+const serviceTypes = [
+  "Electric",
+  "Broadband",
+  "Water",
+  "Gas",
+  "Electric + Broadband",
+];
 
 export default function MembersPage() {
   const [members, setMembers] = useState<Member[]>([]);
@@ -32,6 +41,9 @@ export default function MembersPage() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
+
+  const { role } = useUserRole();
+  const userCanWrite = canWrite(role);
 
   async function loadMembers() {
     setLoading(true);
@@ -66,6 +78,11 @@ export default function MembersPage() {
   async function createMember() {
     setMessage(null);
 
+    if (!userCanWrite) {
+      setMessage("Read-only users cannot create members.");
+      return;
+    }
+
     if (!form.account_number.trim()) {
       setMessage("Account number is required.");
       return;
@@ -99,6 +116,12 @@ export default function MembersPage() {
 
     if (data) {
       setMembers((current) => [data, ...current]);
+
+      await supabase.from("activity_log").insert({
+        module: "Members",
+        action: "Member Created",
+        details: `Member ${data.name} was created.`,
+      });
     }
 
     setForm(emptyForm);
@@ -107,6 +130,11 @@ export default function MembersPage() {
   }
 
   async function deleteMember(memberId: string) {
+    if (!userCanWrite) {
+      setMessage("Read-only users cannot delete members.");
+      return;
+    }
+
     const confirmed = window.confirm(
       "Delete this member? This is only for the demo build."
     );
@@ -140,6 +168,8 @@ export default function MembersPage() {
         </div>
       )}
 
+      {!userCanWrite && <PermissionNotice />}
+
       <div className="grid gap-6 xl:grid-cols-3">
         <section className="card overflow-hidden xl:col-span-2">
           <div className="border-b border-slate-100 p-5">
@@ -169,10 +199,7 @@ export default function MembersPage() {
               <tbody className="divide-y divide-slate-100">
                 {!loading && members.length === 0 && (
                   <tr>
-                    <td
-                      colSpan={6}
-                      className="p-6 text-sm text-slate-500"
-                    >
+                    <td colSpan={6} className="p-6 text-sm text-slate-500">
                       No members yet. Create your first member from the form.
                     </td>
                   </tr>
@@ -201,8 +228,9 @@ export default function MembersPage() {
                     <td className="p-4">
                       <button
                         type="button"
+                        disabled={!userCanWrite}
                         onClick={() => deleteMember(member.id)}
-                        className="rounded-xl border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50"
+                        className="rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         Delete
                       </button>
@@ -232,7 +260,8 @@ export default function MembersPage() {
             }}
           >
             <input
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="Account number, e.g. M-1001"
               value={form.account_number}
               onChange={(event) =>
@@ -241,14 +270,16 @@ export default function MembersPage() {
             />
 
             <input
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="Member name"
               value={form.name}
               onChange={(event) => updateForm("name", event.target.value)}
             />
 
             <select
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               value={form.service_type}
               onChange={(event) =>
                 updateForm("service_type", event.target.value)
@@ -260,22 +291,25 @@ export default function MembersPage() {
             </select>
 
             <input
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="Phone"
               value={form.phone}
               onChange={(event) => updateForm("phone", event.target.value)}
             />
 
             <input
+              disabled={!userCanWrite}
               type="email"
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="Email"
               value={form.email}
               onChange={(event) => updateForm("email", event.target.value)}
             />
 
             <textarea
-              className="min-h-24 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="min-h-24 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="Service address"
               value={form.address}
               onChange={(event) => updateForm("address", event.target.value)}
@@ -283,10 +317,10 @@ export default function MembersPage() {
 
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || !userCanWrite}
               className="w-full rounded-xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {saving ? "Saving..." : "Save Member"}
+              {saving ? "Saving..." : userCanWrite ? "Save Member" : "Read Only"}
             </button>
           </form>
         </aside>

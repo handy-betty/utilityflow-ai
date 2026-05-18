@@ -3,8 +3,11 @@
 import { useEffect, useState } from "react";
 import PageHeader from "@/components/PageHeader";
 import Badge from "@/components/Badge";
+import PermissionNotice from "@/components/PermissionNotice";
 import { priorityBadge } from "@/lib/utils";
 import { supabase } from "@/lib/supabaseClient";
+import { canWrite } from "@/lib/roles";
+import { useUserRole } from "@/lib/useUserRole";
 
 type BugReport = {
   id: string;
@@ -70,6 +73,9 @@ export default function BugsPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
+  const { role } = useUserRole();
+  const userCanWrite = canWrite(role);
+
   async function loadBugReports() {
     setLoading(true);
     setMessage(null);
@@ -102,6 +108,11 @@ export default function BugsPage() {
 
   async function createBugReport() {
     setMessage(null);
+
+    if (!userCanWrite) {
+      setMessage("Read-only users cannot create bug reports.");
+      return;
+    }
 
     if (!form.title.trim()) {
       setMessage("Bug title is required.");
@@ -165,6 +176,11 @@ export default function BugsPage() {
   async function updateBugStatus(bugId: string, status: string) {
     setMessage(null);
 
+    if (!userCanWrite) {
+      setMessage("Read-only users cannot update bug status.");
+      return;
+    }
+
     const { data, error } = await supabase
       .from("bug_reports")
       .update({ status })
@@ -189,6 +205,11 @@ export default function BugsPage() {
   }
 
   async function deleteBugReport(bugId: string) {
+    if (!userCanWrite) {
+      setMessage("Read-only users cannot delete bug reports.");
+      return;
+    }
+
     const confirmed = window.confirm(
       "Delete this bug report? This is only for the demo build."
     );
@@ -221,6 +242,8 @@ export default function BugsPage() {
           {message}
         </div>
       )}
+
+      {!userCanWrite && <PermissionNotice />}
 
       <div className="grid gap-6 xl:grid-cols-3">
         <section className="xl:col-span-2">
@@ -307,7 +330,8 @@ export default function BugsPage() {
 
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                   <select
-                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                    disabled={!userCanWrite}
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
                     value={bug.status}
                     onChange={(event) =>
                       updateBugStatus(bug.id, event.target.value)
@@ -320,8 +344,9 @@ export default function BugsPage() {
 
                   <button
                     type="button"
+                    disabled={!userCanWrite}
                     onClick={() => deleteBugReport(bug.id)}
-                    className="rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+                    className="rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Delete
                   </button>
@@ -348,7 +373,8 @@ export default function BugsPage() {
             }}
           >
             <select
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               value={form.module}
               onChange={(event) => updateForm("module", event.target.value)}
             >
@@ -358,14 +384,16 @@ export default function BugsPage() {
             </select>
 
             <input
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="Bug title"
               value={form.title}
               onChange={(event) => updateForm("title", event.target.value)}
             />
 
             <textarea
-              className="min-h-24 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="min-h-24 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="Steps to reproduce"
               value={form.steps_to_reproduce}
               onChange={(event) =>
@@ -374,7 +402,8 @@ export default function BugsPage() {
             />
 
             <textarea
-              className="min-h-20 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="min-h-20 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="Expected result"
               value={form.expected_result}
               onChange={(event) =>
@@ -383,7 +412,8 @@ export default function BugsPage() {
             />
 
             <textarea
-              className="min-h-20 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="min-h-20 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="Actual result"
               value={form.actual_result}
               onChange={(event) =>
@@ -392,7 +422,8 @@ export default function BugsPage() {
             />
 
             <select
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               value={form.severity}
               onChange={(event) => updateForm("severity", event.target.value)}
             >
@@ -402,7 +433,8 @@ export default function BugsPage() {
             </select>
 
             <select
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               value={form.priority}
               onChange={(event) => updateForm("priority", event.target.value)}
             >
@@ -412,7 +444,8 @@ export default function BugsPage() {
             </select>
 
             <select
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               value={form.status}
               onChange={(event) => updateForm("status", event.target.value)}
             >
@@ -422,7 +455,8 @@ export default function BugsPage() {
             </select>
 
             <textarea
-              className="min-h-20 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="min-h-20 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="Notes"
               value={form.notes}
               onChange={(event) => updateForm("notes", event.target.value)}
@@ -430,10 +464,10 @@ export default function BugsPage() {
 
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || !userCanWrite}
               className="w-full rounded-xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {saving ? "Saving..." : "Save Bug Report"}
+              {saving ? "Saving..." : userCanWrite ? "Save Bug Report" : "Read Only"}
             </button>
           </form>
         </aside>

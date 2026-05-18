@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import PageHeader from "@/components/PageHeader";
 import Badge from "@/components/Badge";
+import PermissionNotice from "@/components/PermissionNotice";
 import { supabase } from "@/lib/supabaseClient";
+import { canWrite } from "@/lib/roles";
+import { useUserRole } from "@/lib/useUserRole";
 
 type QATestCase = {
   id: string;
@@ -65,6 +68,9 @@ export default function QAPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
+  const { role } = useUserRole();
+  const userCanWrite = canWrite(role);
+
   async function loadTestCases() {
     setLoading(true);
     setMessage(null);
@@ -97,6 +103,11 @@ export default function QAPage() {
 
   async function createTestCase() {
     setMessage(null);
+
+    if (!userCanWrite) {
+      setMessage("Read-only users cannot create QA test cases.");
+      return;
+    }
 
     if (!form.title.trim()) {
       setMessage("Test title is required.");
@@ -154,6 +165,11 @@ export default function QAPage() {
   async function updateStatus(testCaseId: string, status: string) {
     setMessage(null);
 
+    if (!userCanWrite) {
+      setMessage("Read-only users cannot update QA test case status.");
+      return;
+    }
+
     const { data, error } = await supabase
       .from("qa_test_cases")
       .update({ status })
@@ -178,6 +194,11 @@ export default function QAPage() {
   }
 
   async function deleteTestCase(testCaseId: string) {
+    if (!userCanWrite) {
+      setMessage("Read-only users cannot delete QA test cases.");
+      return;
+    }
+
     const confirmed = window.confirm(
       "Delete this QA test case? This is only for the demo build."
     );
@@ -213,6 +234,8 @@ export default function QAPage() {
           {message}
         </div>
       )}
+
+      {!userCanWrite && <PermissionNotice />}
 
       <div className="grid gap-6 xl:grid-cols-3">
         <section className="card p-5 xl:col-span-2">
@@ -287,7 +310,8 @@ export default function QAPage() {
                         </Badge>
 
                         <select
-                          className="block w-full rounded-xl border border-slate-200 px-2 py-1 text-xs"
+                          disabled={!userCanWrite}
+                          className="block w-full rounded-xl border border-slate-200 px-2 py-1 text-xs disabled:cursor-not-allowed disabled:opacity-60"
                           value={test.status}
                           onChange={(event) =>
                             updateStatus(test.id, event.target.value)
@@ -309,8 +333,9 @@ export default function QAPage() {
                     <td>
                       <button
                         type="button"
+                        disabled={!userCanWrite}
                         onClick={() => deleteTestCase(test.id)}
-                        className="rounded-xl border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50"
+                        className="rounded-xl border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                       >
                         Delete
                       </button>
@@ -339,7 +364,8 @@ export default function QAPage() {
             }}
           >
             <select
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               value={form.module}
               onChange={(event) => updateForm("module", event.target.value)}
             >
@@ -349,21 +375,24 @@ export default function QAPage() {
             </select>
 
             <input
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="Test title"
               value={form.title}
               onChange={(event) => updateForm("title", event.target.value)}
             />
 
             <textarea
-              className="min-h-24 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="min-h-24 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="Steps to test"
               value={form.steps}
               onChange={(event) => updateForm("steps", event.target.value)}
             />
 
             <textarea
-              className="min-h-20 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="min-h-20 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="Expected result"
               value={form.expected_result}
               onChange={(event) =>
@@ -372,7 +401,8 @@ export default function QAPage() {
             />
 
             <textarea
-              className="min-h-20 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="min-h-20 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="Actual result"
               value={form.actual_result}
               onChange={(event) =>
@@ -381,7 +411,8 @@ export default function QAPage() {
             />
 
             <select
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               value={form.status}
               onChange={(event) => updateForm("status", event.target.value)}
             >
@@ -391,7 +422,8 @@ export default function QAPage() {
             </select>
 
             <select
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               value={form.severity}
               onChange={(event) => updateForm("severity", event.target.value)}
             >
@@ -401,7 +433,8 @@ export default function QAPage() {
             </select>
 
             <textarea
-              className="min-h-20 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="min-h-20 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="Notes"
               value={form.notes}
               onChange={(event) => updateForm("notes", event.target.value)}
@@ -409,10 +442,10 @@ export default function QAPage() {
 
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || !userCanWrite}
               className="w-full rounded-xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {saving ? "Saving..." : "Save QA Test Case"}
+              {saving ? "Saving..." : userCanWrite ? "Save QA Test Case" : "Read Only"}
             </button>
           </form>
         </aside>

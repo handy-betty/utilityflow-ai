@@ -6,6 +6,10 @@ import Badge from "@/components/Badge";
 import { priorityBadge, statusBadge } from "@/lib/utils";
 import { supabase } from "@/lib/supabaseClient";
 
+import PermissionNotice from "@/components/PermissionNotice";
+import { canWrite } from "@/lib/roles";
+import { useUserRole } from "@/lib/useUserRole";
+
 type Technician = {
   id: string;
   name: string;
@@ -83,6 +87,8 @@ export default function WorkOrdersPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
   const [statusFilter, setStatusFilter] = useState("All");
+  const { role } = useUserRole();
+  const userCanWrite = canWrite(role);
 
   async function loadData() {
     setLoading(true);
@@ -167,6 +173,11 @@ export default function WorkOrdersPage() {
 
   async function createWorkOrder() {
     setMessage(null);
+    
+    if (!userCanWrite) {
+  setMessage("Read-only users cannot create work orders.");
+  return;
+}
 
     if (!form.member_name.trim()) {
       setMessage("Member name is required.");
@@ -225,6 +236,11 @@ export default function WorkOrdersPage() {
   async function updateStatus(orderId: string, newStatus: string) {
     setMessage(null);
 
+    if (!userCanWrite) {
+  setMessage("Read-only users cannot update work order status.");
+  return;
+}
+
     const { data, error } = await supabase
       .from("work_orders")
       .update({ status: newStatus })
@@ -249,11 +265,16 @@ export default function WorkOrdersPage() {
   }
 
   async function deleteWorkOrder(orderId: string) {
-    const confirmed = window.confirm(
-      "Delete this work order? This is only for the demo build."
-    );
+  if (!userCanWrite) {
+    setMessage("Read-only users cannot delete work orders.");
+    return;
+  }
 
-    if (!confirmed) return;
+  const confirmed = window.confirm(
+    "Delete this work order? This is only for the demo build."
+  );
+
+  if (!confirmed) return;
 
     const { error } = await supabase
       .from("work_orders")
@@ -283,7 +304,7 @@ export default function WorkOrdersPage() {
         <div className="mb-5 rounded-2xl border border-slate-200 bg-white p-4 text-sm text-slate-700 shadow-sm">
           {message}
         </div>
-      )}
+      )} {!userCanWrite && <PermissionNotice />}
 
       <div className="grid gap-6 xl:grid-cols-3">
         <section className="card p-5 xl:col-span-2">
@@ -370,7 +391,8 @@ export default function WorkOrdersPage() {
 
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row sm:flex-wrap">
                   <select
-                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                    disabled={!userCanWrite}
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
                     value={order.status}
                     onChange={(event) =>
                       updateStatus(order.id, event.target.value)
@@ -385,8 +407,9 @@ export default function WorkOrdersPage() {
 
                   <button
                     type="button"
+                    disabled={!userCanWrite}
                     onClick={() => deleteWorkOrder(order.id)}
-                    className="rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+                    className="rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Delete
                   </button>
@@ -493,12 +516,12 @@ export default function WorkOrdersPage() {
             />
 
             <button
-              type="submit"
-              disabled={saving}
-              className="w-full rounded-xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
-            >
-              {saving ? "Saving..." : "Save Work Order"}
-            </button>
+  type="submit"
+  disabled={saving || !userCanWrite}
+  className="w-full rounded-xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
+>
+  {saving ? "Saving..." : userCanWrite ? "Save Work Order" : "Read Only"}
+</button>
           </form>
         </aside>
       </div>

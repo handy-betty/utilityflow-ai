@@ -2,7 +2,10 @@
 
 import { useEffect, useMemo, useState } from "react";
 import PageHeader from "@/components/PageHeader";
+import PermissionNotice from "@/components/PermissionNotice";
 import { supabase } from "@/lib/supabaseClient";
+import { canWrite } from "@/lib/roles";
+import { useUserRole } from "@/lib/useUserRole";
 
 type TrainingDoc = {
   id: string;
@@ -45,6 +48,9 @@ export default function TrainingPage() {
   const [message, setMessage] = useState<string | null>(null);
   const [categoryFilter, setCategoryFilter] = useState("All");
 
+  const { role } = useUserRole();
+  const userCanWrite = canWrite(role);
+
   async function loadDocs() {
     setLoading(true);
     setMessage(null);
@@ -82,6 +88,11 @@ export default function TrainingPage() {
 
   async function createDoc() {
     setMessage(null);
+
+    if (!userCanWrite) {
+      setMessage("Read-only users cannot create training documents.");
+      return;
+    }
 
     if (!form.title.trim()) {
       setMessage("Training title is required.");
@@ -127,6 +138,11 @@ export default function TrainingPage() {
   }
 
   async function deleteDoc(docId: string) {
+    if (!userCanWrite) {
+      setMessage("Read-only users cannot delete training documents.");
+      return;
+    }
+
     const confirmed = window.confirm(
       "Delete this training document? This is only for the demo build."
     );
@@ -149,6 +165,12 @@ export default function TrainingPage() {
 
   async function seedStarterDocs() {
     setMessage(null);
+
+    if (!userCanWrite) {
+      setMessage("Read-only users cannot add starter training documents.");
+      return;
+    }
+
     setSaving(true);
 
     const starterDocs = [
@@ -226,6 +248,8 @@ export default function TrainingPage() {
         </div>
       )}
 
+      {!userCanWrite && <PermissionNotice />}
+
       <div className="grid gap-6 xl:grid-cols-3">
         <section className="xl:col-span-2">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -255,10 +279,10 @@ export default function TrainingPage() {
               <button
                 type="button"
                 onClick={seedStarterDocs}
-                disabled={saving}
-                className="rounded-xl border border-brand-200 px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 disabled:opacity-60"
+                disabled={saving || !userCanWrite}
+                className="rounded-xl border border-brand-200 px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60"
               >
-                Add Starter Docs
+                {saving ? "Saving..." : userCanWrite ? "Add Starter Docs" : "Read Only"}
               </button>
             </div>
           </div>
@@ -285,8 +309,9 @@ export default function TrainingPage() {
 
                   <button
                     type="button"
+                    disabled={!userCanWrite}
                     onClick={() => deleteDoc(doc.id)}
-                    className="rounded-xl border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50"
+                    className="rounded-xl border border-red-200 px-3 py-2 text-xs font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Delete
                   </button>
@@ -318,7 +343,8 @@ export default function TrainingPage() {
             }}
           >
             <select
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               value={form.category}
               onChange={(event) => updateForm("category", event.target.value)}
             >
@@ -328,14 +354,16 @@ export default function TrainingPage() {
             </select>
 
             <input
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="Training title"
               value={form.title}
               onChange={(event) => updateForm("title", event.target.value)}
             />
 
             <textarea
-              className="min-h-40 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="min-h-40 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="Training content"
               value={form.content}
               onChange={(event) => updateForm("content", event.target.value)}
@@ -343,10 +371,10 @@ export default function TrainingPage() {
 
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || !userCanWrite}
               className="w-full rounded-xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {saving ? "Saving..." : "Save Training Doc"}
+              {saving ? "Saving..." : userCanWrite ? "Save Training Doc" : "Read Only"}
             </button>
           </form>
         </aside>

@@ -3,7 +3,10 @@
 import { useEffect, useState } from "react";
 import PageHeader from "@/components/PageHeader";
 import Badge from "@/components/Badge";
+import PermissionNotice from "@/components/PermissionNotice";
 import { supabase } from "@/lib/supabaseClient";
+import { canWrite } from "@/lib/roles";
+import { useUserRole } from "@/lib/useUserRole";
 
 type ReleaseNote = {
   id: string;
@@ -46,6 +49,9 @@ export default function ReleaseNotesPage() {
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
 
+  const { role } = useUserRole();
+  const userCanWrite = canWrite(role);
+
   async function loadReleaseNotes() {
     setLoading(true);
     setMessage(null);
@@ -79,6 +85,11 @@ export default function ReleaseNotesPage() {
 
   async function createReleaseNote() {
     setMessage(null);
+
+    if (!userCanWrite) {
+      setMessage("Read-only users cannot create release notes.");
+      return;
+    }
 
     if (!form.version.trim()) {
       setMessage("Version is required.");
@@ -131,6 +142,11 @@ export default function ReleaseNotesPage() {
   async function updateQAStatus(releaseId: string, qaStatus: string) {
     setMessage(null);
 
+    if (!userCanWrite) {
+      setMessage("Read-only users cannot update release note QA status.");
+      return;
+    }
+
     const { data, error } = await supabase
       .from("release_notes")
       .update({ qa_status: qaStatus })
@@ -155,6 +171,11 @@ export default function ReleaseNotesPage() {
   }
 
   async function deleteReleaseNote(releaseId: string) {
+    if (!userCanWrite) {
+      setMessage("Read-only users cannot delete release notes.");
+      return;
+    }
+
     const confirmed = window.confirm(
       "Delete this release note? This is only for the demo build."
     );
@@ -180,6 +201,12 @@ export default function ReleaseNotesPage() {
 
   async function seedFirstRelease() {
     setMessage(null);
+
+    if (!userCanWrite) {
+      setMessage("Read-only users cannot add starter release notes.");
+      return;
+    }
+
     setSaving(true);
 
     const { data, error } = await supabase
@@ -234,6 +261,8 @@ export default function ReleaseNotesPage() {
         </div>
       )}
 
+      {!userCanWrite && <PermissionNotice />}
+
       <div className="grid gap-6 xl:grid-cols-3">
         <section className="xl:col-span-2">
           <div className="mb-4 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
@@ -251,10 +280,10 @@ export default function ReleaseNotesPage() {
             <button
               type="button"
               onClick={seedFirstRelease}
-              disabled={saving}
-              className="rounded-xl border border-brand-200 px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 disabled:opacity-60"
+              disabled={saving || !userCanWrite}
+              className="rounded-xl border border-brand-200 px-3 py-2 text-sm font-semibold text-brand-700 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-60"
             >
-              Add Starter Release
+              {saving ? "Saving..." : userCanWrite ? "Add Starter Release" : "Read Only"}
             </button>
           </div>
 
@@ -325,7 +354,8 @@ export default function ReleaseNotesPage() {
 
                 <div className="mt-4 flex flex-col gap-2 sm:flex-row">
                   <select
-                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm"
+                    disabled={!userCanWrite}
+                    className="rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
                     value={release.qa_status}
                     onChange={(event) =>
                       updateQAStatus(release.id, event.target.value)
@@ -338,8 +368,9 @@ export default function ReleaseNotesPage() {
 
                   <button
                     type="button"
+                    disabled={!userCanWrite}
                     onClick={() => deleteReleaseNote(release.id)}
-                    className="rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50"
+                    className="rounded-xl border border-red-200 px-3 py-2 text-sm font-semibold text-red-700 hover:bg-red-50 disabled:cursor-not-allowed disabled:opacity-50"
                   >
                     Delete
                   </button>
@@ -367,28 +398,32 @@ export default function ReleaseNotesPage() {
             }}
           >
             <input
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="Version, e.g. 0.1.0"
               value={form.version}
               onChange={(event) => updateForm("version", event.target.value)}
             />
 
             <input
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="Release title"
               value={form.title}
               onChange={(event) => updateForm("title", event.target.value)}
             />
 
             <textarea
-              className="min-h-24 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="min-h-24 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="Summary"
               value={form.summary}
               onChange={(event) => updateForm("summary", event.target.value)}
             />
 
             <textarea
-              className="min-h-28 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="min-h-28 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="New features"
               value={form.new_features}
               onChange={(event) =>
@@ -397,14 +432,16 @@ export default function ReleaseNotesPage() {
             />
 
             <textarea
-              className="min-h-28 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="min-h-28 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="Fixed bugs"
               value={form.fixed_bugs}
               onChange={(event) => updateForm("fixed_bugs", event.target.value)}
             />
 
             <textarea
-              className="min-h-28 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="min-h-28 w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               placeholder="Known issues"
               value={form.known_issues}
               onChange={(event) =>
@@ -413,7 +450,8 @@ export default function ReleaseNotesPage() {
             />
 
             <select
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              disabled={!userCanWrite}
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               value={form.qa_status}
               onChange={(event) => updateForm("qa_status", event.target.value)}
             >
@@ -423,8 +461,9 @@ export default function ReleaseNotesPage() {
             </select>
 
             <input
+              disabled={!userCanWrite}
               type="date"
-              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm"
+              className="w-full rounded-xl border border-slate-200 px-3 py-2 text-sm disabled:cursor-not-allowed disabled:opacity-60"
               value={form.release_date}
               onChange={(event) =>
                 updateForm("release_date", event.target.value)
@@ -433,10 +472,10 @@ export default function ReleaseNotesPage() {
 
             <button
               type="submit"
-              disabled={saving}
+              disabled={saving || !userCanWrite}
               className="w-full rounded-xl bg-brand-700 px-4 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-60"
             >
-              {saving ? "Saving..." : "Save Release Note"}
+              {saving ? "Saving..." : userCanWrite ? "Save Release Note" : "Read Only"}
             </button>
           </form>
         </aside>

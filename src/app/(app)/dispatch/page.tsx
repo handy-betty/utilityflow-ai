@@ -3,8 +3,11 @@
 import { useEffect, useMemo, useState } from "react";
 import PageHeader from "@/components/PageHeader";
 import Badge from "@/components/Badge";
+import PermissionNotice from "@/components/PermissionNotice";
 import { statusBadge, priorityBadge } from "@/lib/utils";
 import { supabase } from "@/lib/supabaseClient";
+import { canWrite } from "@/lib/roles";
+import { useUserRole } from "@/lib/useUserRole";
 
 type WorkOrder = {
   id: string;
@@ -45,6 +48,9 @@ export default function DispatchPage() {
   const [loading, setLoading] = useState(true);
   const [message, setMessage] = useState<string | null>(null);
 
+  const { role } = useUserRole();
+  const userCanWrite = canWrite(role);
+
   async function loadWorkOrders() {
     setLoading(true);
     setMessage(null);
@@ -77,6 +83,11 @@ export default function DispatchPage() {
 
   async function updateStatus(order: WorkOrder, newStatus: string) {
     setMessage(null);
+
+    if (!userCanWrite) {
+      setMessage("Read-only users cannot update dispatch status.");
+      return;
+    }
 
     const { data, error } = await supabase
       .from("work_orders")
@@ -115,6 +126,8 @@ export default function DispatchPage() {
           {message}
         </div>
       )}
+
+      {!userCanWrite && <PermissionNotice />}
 
       {loading ? (
         <div className="card p-5 text-sm text-slate-600">
@@ -180,15 +193,17 @@ export default function DispatchPage() {
                           {nextStatus && (
                             <button
                               type="button"
+                              disabled={!userCanWrite}
                               onClick={() => updateStatus(order, nextStatus)}
-                              className="w-full rounded-xl bg-brand-700 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-800"
+                              className="w-full rounded-xl bg-brand-700 px-3 py-2 text-xs font-semibold text-white hover:bg-brand-800 disabled:cursor-not-allowed disabled:opacity-60"
                             >
-                              Move to {nextStatus}
+                              {userCanWrite ? `Move to ${nextStatus}` : "Read Only"}
                             </button>
                           )}
 
                           <select
-                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs"
+                            disabled={!userCanWrite}
+                            className="w-full rounded-xl border border-slate-200 px-3 py-2 text-xs disabled:cursor-not-allowed disabled:opacity-60"
                             value={order.status}
                             onChange={(event) =>
                               updateStatus(order, event.target.value)
