@@ -16,8 +16,14 @@ import {
   Wrench,
 } from "lucide-react";
 import { supabase } from "@/lib/supabaseClient";
+import { canAccessRoute, roleLabels, type AppRoute } from "@/lib/roles";
+import { useUserRole } from "@/lib/useUserRole";
 
-const items = [
+const items: Array<{
+  href: AppRoute;
+  label: string;
+  icon: React.ComponentType<{ className?: string }>;
+}> = [
   { href: "/dashboard", label: "Dashboard", icon: Home },
   { href: "/work-orders", label: "Work Orders", icon: Wrench },
   { href: "/dispatch", label: "Dispatch", icon: KanbanSquare },
@@ -32,20 +38,23 @@ const items = [
 
 export default function Sidebar() {
   const router = useRouter();
+  const { role, profile } = useUserRole();
+
+  const visibleItems = items.filter((item) => canAccessRoute(role, item.href));
 
   async function handleLogout() {
-  await supabase.auth.signOut();
+    await supabase.auth.signOut();
 
-  router.replace("/login");
+    router.replace("/login");
 
-  setTimeout(() => {
-    window.location.href = "/login";
-  }, 100);
-}
+    setTimeout(() => {
+      window.location.href = "/login";
+    }, 100);
+  }
 
   return (
     <aside className="hidden min-h-screen w-72 border-r border-slate-200 bg-white px-4 py-5 lg:block">
-      <div className="mb-8 rounded-2xl bg-brand-700 p-4 text-white">
+      <div className="mb-6 rounded-2xl bg-brand-700 p-4 text-white">
         <p className="text-sm font-medium text-blue-100">
           Dakota Plains Utility
         </p>
@@ -56,8 +65,20 @@ export default function Sidebar() {
         </p>
       </div>
 
+      <div className="mb-6 rounded-2xl border border-slate-200 bg-slate-50 p-3">
+        <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          Signed in as
+        </p>
+        <p className="mt-1 truncate text-sm font-semibold text-slate-900">
+          {profile?.full_name || profile?.email || "User"}
+        </p>
+        <p className="mt-1 text-xs text-slate-500">
+          Role: {roleLabels[role]}
+        </p>
+      </div>
+
       <nav className="space-y-1">
-        {items.map((item) => {
+        {visibleItems.map((item) => {
           const Icon = item.icon;
 
           return (
