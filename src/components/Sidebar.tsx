@@ -34,10 +34,14 @@ export default function Sidebar() {
   const router = useRouter();
 
   async function handleLogout() {
-    await supabase.auth.signOut();
-    router.push("/login");
-    router.refresh();
-  }
+  await supabase.auth.signOut();
+
+  router.replace("/login");
+
+  setTimeout(() => {
+    window.location.href = "/login";
+  }, 100);
+}
 
   return (
     <aside className="hidden min-h-screen w-72 border-r border-slate-200 bg-white px-4 py-5 lg:block">
