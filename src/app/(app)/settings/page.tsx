@@ -11,7 +11,7 @@ export default function SettingsPage() {
           <div className="rounded-xl bg-slate-50 p-4"><span className="block text-xs font-semibold uppercase text-slate-500">Supabase</span>{isSupabaseConfigured ? "Configured" : "Not configured — using local demo data"}</div>
           <div className="rounded-xl bg-slate-50 p-4"><span className="block text-xs font-semibold uppercase text-slate-500">Deployment</span>Ready for Vercel</div>
           <div className="rounded-xl bg-slate-50 p-4"><span className="block text-xs font-semibold uppercase text-slate-500">AI Mode</span>Controlled help-doc matching</div>
-          <div className="rounded-xl bg-slate-50 p-4"><span className="block text-xs font-semibold uppercase text-slate-500">Portfolio Goal</span>DVR retraining evidence</div>
+          <div className="rounded-xl bg-slate-50 p-4"><span className="block text-xs font-semibold uppercase text-slate-500">Portfolio Goal</span>Project management portfolio evidence</div>
         </div>
       </section>
     </div>
